@@ -6,11 +6,15 @@ function [roi,beam] = fcm_anatroi(label,refimg,reftxt)
 %  roi = fcm_anatroi(label,roidef)
 %     finds MNI voxel coordinates with selected LABEL in ROI definition ROIDEF
 %
-% roidef        The template to use:
-%               'aal' (default) Automatic Anatomical Labelling
-%               'jul' Julich Anatomy toolbox                
+%  [roi,beam] = fcm_anatroi(label,roidef)
+% 	  additionally displays selected ROI on a template brain.
+%
+%  roidef       The template to use:
+%               'aal'  (default) Automatic Anatomical Labelling
+%               'jul'  Julich Anatomy toolbox                
 %               'hmat' Human Motor Area Template
-%               'mni' Montreal Neurological Institute
+%               'mni'  Montreal Neurological Institute
+%               'mars' MarsAtlas
 %               or path to custom template image which must be in Analyze
 %               format.
 
@@ -65,9 +69,14 @@ case 'aal'
     f=unique(f);
     
 case 'jul'
-    refimg=which('Anatomy_v20_MPM.mat');
-    if isempty(refimg), error('Julich SPM Anatomy toolbox must be in matlab path.'), end
+	julfold=fileparts(which('Anatomy.m'));
+	if isempty(julfold), error('Julich SPM Anatomy toolbox must be in matlab path.'), end
+	cwd = pwd;
+	cd(julfold), clear julfold
+    refimg=ls('Anatomy_*_MPM.mat');
+	if isempty(refimg), error('Could not find ''Anatomy_*_MPM.mat'' file of Julich Anatomy toolbox.'), end
     load(refimg);
+	cd(cwd), clear cwd
     
     list = {MAP.name};
     if strcmp('-list',label{1})
@@ -120,9 +129,16 @@ case 'mni'
     f=unique(f);
             
 case 'hmat'
-    if isempty(which('BrikLoad.m')), error('AFNI Matlab Library is needed in matlab path to read BRIK file.'), end
+    
     refimg=which('HMAT+tlrc.BRIK');
-    if isempty(refimg), error('HMAT template must be in matlab path.'), end
+    isafni = ~isempty(refimg);
+    if ~isafni
+      refimg=which('HMAT.nii');
+      isnii = ~isempty(refimg);
+      if ~isnii, error('HMAT template must be in matlab path.'), end
+    else
+      if isempty(which('BrikLoad.m')), error('AFNI Matlab Library is needed in matlab path to read BRIK file.'), end
+    end
     
     list={'M1 R';'M1 L';'S1 R';'S1 L';'SMA R';'SMA L';'pre-SMA R';'pre-SMA L'; ...
           'PMd R';'PMd L';'PMv R';'PMv L'};
@@ -132,11 +148,21 @@ case 'hmat'
         return
     end
     
-    [~,Y,hdr] = BrikLoad(refimg);
-    [vect,vb] = nut_vol2vector(Y);
-    voxelsize = hdr.DELTA;
-    mat = [-voxelsize(1) 0 0 -hdr.ORIGIN(1);0 -voxelsize(2) 0 -hdr.ORIGIN(2);0 0 voxelsize(3) hdr.ORIGIN(3);0 0 0 1];
-    refvox = nut_coordtfm(vb,mat)-1;
+    if isafni
+      [~,Y,hdr] = BrikLoad(refimg);
+      [vect,vb] = nut_vol2vector(Y);
+      voxelsize = hdr.DELTA;
+      mat = [-voxelsize(1) 0 0 -hdr.ORIGIN(1);0 -voxelsize(2) 0 -hdr.ORIGIN(2);0 0 voxelsize(3) hdr.ORIGIN(3);0 0 0 1];
+      refvox = nut_coordtfm(vb,mat)-1;
+    elseif isnii
+      V=spm_vol(refimg);
+      Y=spm_read_vols(V);
+      [vect,vb] = nut_vol2vector(Y);
+      refvox = nut_coordtfm(vb,V.mat);
+      voxelsize=diag(V.mat);
+      voxelsize=abs(voxelsize(1:3));  
+    end
+
     
     f=[];
     for k=1:length(label)
@@ -146,6 +172,48 @@ case 'hmat'
     end
     f=unique(f);
 
+case 'mars'
+    refimg=which('colin27_MNI_MarsAtlas.nii');
+    if isempty(refimg), error('MarsAtlas template image colin27_MNI_MarsAtlas.nii must be in matlab path.'), end
+    [lnl,lnr,lls,lll]=textread('colin27_MNI_MarsAtlas.txt','%d\t%d\t%s\t%s','headerlines',1);
+    
+    if strcmp('-list',label{1})
+        roi = [lls lll];
+        return
+    end
+    
+    V=spm_vol(refimg);
+    Y=spm_read_vols(V);
+    [vect,vb] = nut_vol2vector(Y);
+    refvox = nut_coordtfm(vb,V.mat);
+    voxelsize=diag(V.mat);
+    voxelsize=abs(voxelsize(1:3));  
+    
+    f=[];
+    for k=1:length(label)
+        selLR = any(strcmp(label{k}(end),{'L' 'R'}));
+        if selLR
+            lab=deblank(label{k}(1:end-1));
+            LR=upper(label{k}(end));
+        else
+            lab=label{k};
+            LR='';
+        end
+        v = (strcmpi(lab,lls) | strcmpi(lab,lll));
+        if ~any(v), error('label %s not found',label{k}), end
+        label{k} = [lls{v} LR];  % make sure it's the short label
+        if selLR
+            if strcmp(LR,'L')
+                f = [f; find(vect == lnl(v))];
+            else
+                f = [f; find(vect == lnr(v))];
+            end
+        else
+            f = [f; find( (vect == lnl(v)) | (vect == lnr(v)) )];
+        end
+    end
+    f=unique(f);
+    
 otherwise
     V = spm_vol(refimg);
     Y = spm_read_vols(V);

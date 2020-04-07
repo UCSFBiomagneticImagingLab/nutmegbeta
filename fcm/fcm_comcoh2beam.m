@@ -1,16 +1,11 @@
-function fcm_comcoh2beam(comcohfile,wfile)
+function fcm_comcoh2beam(comcohfile)
 % FCM_COMCOH2BEAM  checks your current FCM configuration and creates output 
 %  beam file from functional connectivity values.  
 %
-%    fcm_comcoh2beam(comcohfile,¦wfile¦)
+%    fcm_comcoh2beam(comcohfile)
 %
 %  COMCOHFILE  name of file containing functional connectivity results.
-%  WFILE       (optional) File containing the spatial filter matrix W. If
-%              this input is given, the function will try to create an
-%              additional set of files that are corrected for artifacts due
-%              to spatial leakage of the inverse solution. The correction
-%              subtracts the spatial filter correlation matrix from the
-%              data functional connectivity matrix.
+
 
 
 global fuse nuts
@@ -67,32 +62,33 @@ switch fuse.connection
         error('Invalid connection voxel setting.')
 end
 
-correctnout(meanfun,Lfun,comcohfile,wfile)
-
-%-------------------
-function correctnout(meanfun,Lfun,comcohfile,wfile)
-global fuse
-
 produceoutput(meanfun,Lfun,comcohfile)
 
+%-------------------
+% function correctnout(meanfun,Lfun,comcohfile,wfile)
+% This does not really work.
+% global fuse
+% 
+% produceoutput(meanfun,Lfun,comcohfile)
+
 % Correct spatial leakage
-if ~isempty(wfile) && ~strcmpi(fuse.seed,'Extracerebral') && any(strcmp(fuse.funconn,{'ccohere' 'nccohere' 'ampcorr'}))   % Correction for PLI not necessary
-    load(comcohfile);
-    load(wfile);
-    if ~exist('W','var')
-        if exist('Wact','var'), W=Wact; 
-        else warning('Not a valid weights file, cannot correct for spatial leakage.'), return
-        end
-    end
-    if ndims(W)>2 && size(W,2)>1
-        warning('No scalar filter weights provided, cannot correct for spatial leakage.'), return
-    end    
-    CC=fcm_correctspatialleakage(CC,W); clear W
-    [pa,fi,dum]=fileparts(comcohfile);
-    comcohfile = fullfile(pa,[fi 'C']);
-    save(comcohfile,'CC'), clear CC
-    produceoutput(meanfun,Lfun,comcohfile)
-end
+% if ~isempty(wfile) && ~strcmpi(fuse.seed,'Extracerebral') && any(strcmp(fuse.funconn,{'ccohere' 'nccohere' 'ampcorr'}))   % Correction for PLI not necessary
+%     load(comcohfile);
+%     load(wfile);
+%     if ~exist('W','var')
+%         if exist('Wact','var'), W=Wact; 
+%         else warning('Not a valid weights file, cannot correct for spatial leakage.'), return
+%         end
+%     end
+%     if ndims(W)>2 && size(W,2)>1
+%         warning('No scalar filter weights provided, cannot correct for spatial leakage.'), return
+%     end    
+%     CC=fcm_correctspatialleakage(CC,W); clear W
+%     [pa,fi,dum]=fileparts(comcohfile);
+%     comcohfile = fullfile(pa,[fi 'C']);
+%     save(comcohfile,'CC'), clear CC
+%     produceoutput(meanfun,Lfun,comcohfile)
+% end
     
 %-----------------------
 function produceoutput(meanfun,Lfun,comcohfile)
@@ -106,8 +102,8 @@ if strcmpi(fuse.connectionavg,'Seed')
         if iscell(nuts.selvox.ipsilab), lab=[nuts.selvox.ipsilab{:}];
         else lab=nuts.selvox.ipsilab; 
         end
-        lab = strrep(lab,'_','');
-        lab = strrep(lab,' ','');
+        lab = strrep(lab,'_',''); lab = strrep(lab,' ',''); lab = strrep(lab,'\',''); lab = strrep(lab,'/','');
+        
         beamfile=[beamfile lab];
     end
 elseif ~strcmpi(fuse.connectionavg,'all')
@@ -121,7 +117,7 @@ if ~isempty(strmatch('Mean',fuse.output,'exact'))
     end
     if length(beam)>1
         BEAM=beam; clear beam
-        for k=1:length(BEAM);
+        for k=1:length(BEAM)
             beam = BEAM(k);
             save([beamfile '_ext' int2str(k)],'beam')
             if ~isempty(strmatch('Z',fuse.output,'exact')) 
