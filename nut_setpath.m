@@ -21,9 +21,9 @@ NUT_BASE = fileparts(which('nutmeg.m'));
 P = path;
 P = textscan(P,'%s','delimiter',pathsep);
 P = P{1};
-idx = strmatch(NUT_BASE,P);
-if ~isempty(idx)
-    rmpath(P{idx});
+isold = ~cellfun(@isempty,strfind(lower(P),'nutmeg'));
+if any(isold)
+    rmpath(P{isold});
 end
 
 % Add correct path
