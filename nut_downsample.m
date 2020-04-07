@@ -1,12 +1,12 @@
-function nuts = nut_downsample(nuts,R)
+function meg = nut_downsample(meg,R)
 % NUT_DOWNSAMPLE  reduces sampling rate of data in nuts structure.
 %                 based on DECIMATE of MATLAB's signal toolbox, but works
 %                 for multiepoch signals.
 %
-%   nuts = nut_downsample(nuts,reduction_factor)
+%   nuts.meg = nut_downsample(nuts.meg,reduction_factor)
 
 
-datadim = size(nuts.meg.data);
+datadim = size(meg.data);
 nout = ceil(datadim(1)/R);
 nbeg = R - (R*nout - datadim(1));
 
@@ -15,15 +15,15 @@ nbeg = R - (R*nout - datadim(1));
 DD = zeros(nout,datadim(2),datadim(3));
 for e=1:datadim(3)
     for c=1:datadim(2)
-        odata = filtfilt(b,a,nuts.meg.data(:,c,e));
+        odata = filtfilt(b,a,meg.data(:,c,e));
         DD(:,c,e) = odata(nbeg:R:datadim(1));
     end
 end
 clear odata a b
-nuts.meg.data = [];
-nuts.meg.data = DD;
-nuts.meg.srate = nuts.meg.srate/R;
-nuts.meg.latency = nuts.meg.latency(nbeg:R:datadim(1));
+meg.data = [];
+meg.data = DD;
+meg.srate = meg.srate/R;
+meg.latency = meg.latency(nbeg:R:datadim(1));
 
 
 %--------------

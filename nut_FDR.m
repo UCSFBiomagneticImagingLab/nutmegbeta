@@ -37,10 +37,10 @@ if isstruct(uP)
         else beam.corr.FDR=q;
         end                 
         if isfield(beam.corr,'roi_p_uncorr')
-            [beam.corr.roi_p_duration_corr,beam.corr.cutoff] = nut_FDR(beam.corr.roi_p_uncorr,q);
+            [beam.corr.roi_p_FDR_corr,beam.corr.cutoff] = nut_FDR(beam.corr.roi_p_uncorr,q);
             beam.corr.p_FDR_corr  = ones(size(beam.s{1}));
             for k3=1:size(beam.corr.roi_p_uncorr,3)
-                beam.corr.p_FDR_corr(:,:,k3) = beam.R.roi2voxel_tfm * beam.corr.roi_p_duration_corr(:,:,k3);
+                beam.corr.p_FDR_corr(:,:,k3) = beam.R.roi2voxel_tfm * beam.corr.roi_p_FDR_corr(:,:,k3);
             end
         elseif isfield(beam.corr,'p_uncorr')
             [beam.corr.p_FDR_corr,beam.corr.cutoff] = nut_FDR(beam.corr.p_uncorr,q);
@@ -51,19 +51,19 @@ if isstruct(uP)
         else beam.snpm.FDR=q;
         end                   
         if isfield(beam.snpm,'roi_p_uncorr_pos')
-            [beam.snpm.roi_p_duration_corr_pos,beam.snpm.cutoff_pos] = nut_FDR(beam.snpm.roi_p_uncorr_pos,q);
+            [beam.snpm.roi_p_FDR_corr_pos,beam.snpm.cutoff_pos] = nut_FDR(beam.snpm.roi_p_uncorr_pos,q);
             beam.snpm.p_FDR_corr_pos  = ones(size(beam.s{1}));
             for k3=1:size(beam.snpm.roi_p_uncorr_pos,3)
-                beam.snpm.p_FDR_corr_pos(:,:,k3) = beam.R.roi2voxel_tfm * beam.snpm.roi_p_duration_corr_pos(:,:,k3);
+                beam.snpm.p_FDR_corr_pos(:,:,k3) = beam.R.roi2voxel_tfm * beam.snpm.roi_p_FDR_corr_pos(:,:,k3);
             end
         elseif isfield(beam.snpm,'p_uncorr_pos')
             [beam.snpm.p_FDR_corr_pos,beam.snpm.cutoff_pos] = nut_FDR(beam.snpm.p_uncorr_pos,q);
         end
         if isfield(beam.snpm,'roi_p_uncorr_neg')
-            [beam.snpm.roi_p_duration_corr_neg,beam.snpm.cutoff_neg] = nut_FDR(beam.snpm.roi_p_uncorr_neg,q);
+            [beam.snpm.roi_p_FDR_corr_neg,beam.snpm.cutoff_neg] = nut_FDR(beam.snpm.roi_p_uncorr_neg,q);
             beam.snpm.p_FDR_corr_neg  = ones(size(beam.s{1}));
             for k3=1:size(beam.snpm.roi_p_uncorr_neg,3)
-                beam.snpm.p_FDR_corr_neg(:,:,k3) = beam.R.roi2voxel_tfm * beam.snpm.roi_p_duration_corr_neg(:,:,k3);
+                beam.snpm.p_FDR_corr_neg(:,:,k3) = beam.R.roi2voxel_tfm * beam.snpm.roi_p_FDR_corr_neg(:,:,k3);
             end
         elseif isfield(beam.snpm,'p_uncorr_neg')
             [beam.snpm.p_FDR_corr_neg,beam.snpm.cutoff_neg] = nut_FDR(beam.snpm.p_uncorr_neg,q);
@@ -74,15 +74,29 @@ if isstruct(uP)
         else beam.ttest.FDR=q;
         end                 
         if isfield(beam.ttest,'roi_p_uncorr')
-            [beam.ttest.roi_p_duration_corr,beam.ttest.cutoff] = nut_FDR(beam.ttest.roi_p_uncorr,q);
+            [beam.ttest.roi_p_FDR_corr,beam.ttest.cutoff] = nut_FDR(beam.ttest.roi_p_uncorr,q);
             beam.ttest.p_FDR_corr  = ones(size(beam.s{1}));
             for k3=1:size(beam.ttest.roi_p_uncorr,3)
-                beam.ttest.p_FDR_corr(:,:,k3) = beam.R.roi2voxel_tfm * beam.ttest.roi_p_duration_corr(:,:,k3);
+                beam.ttest.p_FDR_corr(:,:,k3) = beam.R.roi2voxel_tfm * beam.ttest.roi_p_FDR_corr(:,:,k3);
             end
         elseif isfield(beam.ttest,'p_uncorr')
             [beam.ttest.p_FDR_corr,beam.ttest.cutoff] = nut_FDR(beam.ttest.p_uncorr,q);
         end
     end    
+    if isfield(beam,'normcdf') && ~isfield(beam.normcdf,'p_FDR_corr')        
+        if isfield(beam.normcdf,'FDR'), q=beam.normcdf.FDR;
+        else beam.normcdf.FDR=q;
+        end                 
+        if isfield(beam.normcdf,'roi_p_uncorr')
+            [beam.normcdf.roi_p_FDR_corr,beam.normcdf.cutoff] = nut_FDR(beam.normcdf.roi_p_uncorr,q);
+            beam.normcdf.p_FDR_corr  = ones(size(beam.s{1}));
+            for k3=1:size(beam.normcdf.roi_p_uncorr,3)
+                beam.normcdf.p_FDR_corr(:,:,k3) = beam.R.roi2voxel_tfm * beam.normcdf.roi_p_FDR_corr(:,:,k3);
+            end
+        elseif isfield(beam.normcdf,'p_uncorr')
+            [beam.normcdf.p_FDR_corr,beam.normcdf.cutoff] = nut_FDR(beam.normcdf.p_uncorr,q);
+        end
+    end        
     P = beam;
     return
 end

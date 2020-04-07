@@ -212,7 +212,7 @@ rs=20;
 % end
 
 switch filttype
-    case 'bandpass'
+    case {'bandpass' 'pass' 'bp'}
         ws=[(lofreq-trans_bw)/nyq (hifreq+trans_bw)/nyq];
         wp=[lofreq/nyq hifreq/nyq];
     case 'low'      

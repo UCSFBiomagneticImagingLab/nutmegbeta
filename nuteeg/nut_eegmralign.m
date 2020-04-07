@@ -138,13 +138,13 @@ if strcmp(fitType,'Warp MR')
         spm_write_vol(V,Y);
     end
     
-    [file,path] = uigetfile('*.img','Open Grey Matter MRI to warp (optional, cancel otherwise)');
+    [file,path] = uigetfile({'*.img','*.nii'},'Open Grey Matter MRI to warp (optional, cancel otherwise)');
     if ~isequal(file,0) & ~isequal(path,0)
         V=spm_vol(strcat(path,file));
         c = spm_bsplinc(V,d);
         Y = spm_bsplins(c,XYZ(:,1),XYZ(:,2),XYZ(:,3),d);
         Y = reshape(Y,V.dim(1:3));
-        [file,path] = uiputfile('*.img','Save Warped Grey Matter MRI');
+        [file,path] = uiputfile({'*.img','*.nii'},'Save Warped Grey Matter MRI');
         if ~isequal(file,0) & ~isequal(path,0)
             V.fname=strcat(path,file);
             spm_write_vol(V,Y);

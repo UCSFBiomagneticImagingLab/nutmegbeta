@@ -189,7 +189,10 @@ if isfield(beam,'corr') && isfield(beam.corr,'p_uncorr')
 %     if isfield(beam.corr,'p_cluster_corr'), threstring=[threstring;{'Corr p cluster corr'}]; end
 %     if isfield(beam.corr,'p_duration_corr'), threstring=[threstring;{'Corr p duration corr'}]; end    
 end 
-if isfield(beam,'normcdf'), threstring=[threstring;{'p'}]; end
+if isfield(beam,'normcdf')
+    fn=fieldnames(beam.normcdf); pidx = strmatch('p_',fn); fn=strrep(fn(pidx),'_',' ');
+    threstring=[threstring;cellfun(@(x) ['normcdf ' x],fn,'UniformOutput',false)]; clear fn pidx    
+end
 thresval=get(handles.nut_threshold_menu,'Value');
 if thresval > length(threstring)    % wrong setting
     thresval=1;
@@ -475,17 +478,14 @@ elseif strncmp(thmode,'T-test p',8)
         end
     else, errordlg('No t-tests found in current s_beam file.'), return
     end
-elseif strcmp(thmode,'p')
-    if isfield(beam,'normcdf')
-        set(handles.nut_thresholdpos_text,'string','','Enable','off')
-        set(handles.nut_thresholdneg_text,'string','','Enable','off')
-        if ~isempty(strmatch(beam.normcdf.tail,{'pos','both'}))
-            set(handles.nut_thresholdpos_text,'string',num2str(beam.normcdf.cutoff,'%1.5f'),'Enable','on')
-        end
-        if ~isempty(strmatch(beam.normcdf.tail,{'neg','both'}))
-            set(handles.nut_thresholdneg_text,'string',num2str(beam.normcdf.cutoff,'%1.5f'),'Enable','on')
-        end
-    else, errordlg('No p values found.'), return
+elseif strncmp(thmode,'normcdf',7) || (isfield(beam,'normcdf') && strcmp(thmode,'p'))
+    set(handles.nut_thresholdpos_text,'string','','Enable','off')
+    set(handles.nut_thresholdneg_text,'string','','Enable','off')
+    if ~isempty(strmatch(beam.normcdf.tail,{'pos','both'}))
+        set(handles.nut_thresholdpos_text,'string','0.05','Enable','on')
+    end
+    if ~isempty(strmatch(beam.normcdf.tail,{'neg','both'}))
+        set(handles.nut_thresholdneg_text,'string','0.05','Enable','on')
     end
 elseif strncmp(thmode,'Corr p',6)  
     if isfield(beam,'corr')
@@ -588,7 +588,7 @@ switch thmode
         rivets.threshold(:,:,1) = (repmat(beam.ttest.T(:,:,rivets.freqselect),mul) > thpos);
         rivets.threshold(:,:,2) = (repmat(beam.ttest.T(:,:,rivets.freqselect),mul) < thneg);
 
-    case 'p'
+    case 'p' 
         mul=ssz./size(beam.normcdf.p_uncorr);  mul=mul(1:2);
         if ~isempty(strmatch(beam.normcdf.tail,{'pos','both'}))
             rivets.threshold(:,:,1)=(repmat(beam.normcdf.p_uncorr(:,:,rivets.freqselect),mul) < thpos);
@@ -625,7 +625,7 @@ switch thmode
                         rivets.threshold(:,:,2)=( (repmat(beam.(meth).(field)(:,:,rivets.freqselect),mul) < thneg) & (repmat(beam.(meth).T(:,:,rivets.freqselect),mul) < 0) );
                     end
                     
-                case 'corr'
+                case {'corr' 'normcdf'}
                     mul=ssz./size(beam.(meth).(field));  mul=mul(1:2);
                     if ~isempty(strmatch(beam.(meth).tail,{'pos','both'}))
                         rivets.threshold(:,:,1)=( (repmat(beam.(meth).(field)(:,:,rivets.freqselect),mul) < thpos) & (repmat(beam.s{1}(:,:,rivets.freqselect),mul) > 0) );
@@ -2079,63 +2079,65 @@ if ~rivets.timefmode
     hold off
 end
 
+ts_axes = get(handles.nut_ts_axes,{'Xlabel','Ylabel'});
+megts_axes = get(handles.nut_megts_axes,{'Xlabel','Ylabel'});
 switch styleselect
     case 'Normal Style'
         set(handles.nut_ts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);  %changes time series axes numbers font
         set(handles.nut_megts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);  %changes time series axes numbers font
         set(handles.nut_results_viewer,'Color',[1 1 1]);
         %         set(handles.nut_results_viewer,'Color',[.93 .93 .92]);  %color of background of whole figure
-        set(cell2mat(get(handles.nut_ts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[0 0 0]);  %changes time series axes label
-        set(cell2mat(get(handles.nut_megts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[0 0 0]);  %changes time series axes label
+        set([ts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[0 0 0]);  %changes time series axes label
+        set([megts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[0 0 0]);  %changes time series axes label
         % set(handles.nut_blobstyle,'Value',1);
     case 'Poster Style (Color)'
         set(handles.nut_ts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',18,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);%changes time series axes numbers font
         set(handles.nut_megts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',18,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);%changes time series axes numbers font
         set(handles.nut_results_viewer,'Color',[1 1 1]);
-        set(cell2mat(get(handles.nut_ts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
-        set(cell2mat(get(handles.nut_megts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
+        set([ts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
+        set([megts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
         % set(handles.nut_blobstyle,'Value',2);
     case 'Poster Style (Color2)'
         set(handles.nut_ts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',18,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);%changes time series axes numbers font
         set(handles.nut_megts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',18,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);%changes time series axes numbers font
         set(handles.nut_results_viewer,'Color',[1 1 1]);
-        set(cell2mat(get(handles.nut_ts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
-        set(cell2mat(get(handles.nut_megts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
+        set([ts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
+        set([megts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
         set(handles.nut_blobstyle,'Value',1);
     case 'Poster Style (Monochrome)'
         set(handles.nut_ts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',18,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);%changes time series axes numbers font
         set(handles.nut_megts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',18,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);%changes time series axes numbers font
         set(handles.nut_results_viewer,'Color',[1 1 1]);
-        set(cell2mat(get(handles.nut_ts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
-        set(cell2mat(get(handles.nut_megts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
+        set([ts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
+        set([megts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',18);%changes time series axes label
         set(handles.nut_blobstyle,'Value',1);
     case 'Presentation Style'
         set(handles.nut_ts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',15,'Color',[0 0 0],'XColor',[1 1 0],'YColor',[1 1 0]);  %changes time series axes numbers font
         set(handles.nut_megts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',15,'Color',[0 0 0],'XColor',[1 1 0],'YColor',[1 1 0]);  %changes time series axes numbers font
         set(handles.nut_results_viewer,'Color',[0 0 0]);
-        set(cell2mat(get(handles.nut_ts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',15,'Color',[1 1 0]);  %changes time series axes label
-        set(cell2mat(get(handles.nut_megts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',15,'Color',[1 1 0]);  %changes time series axes label
+        set([ts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',15,'Color',[1 1 0]);  %changes time series axes label
+        set([megts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',15,'Color',[1 1 0]);  %changes time series axes label
         %         set(handles.nut_blobstyle,'Value',2);
     case {'Paper Style (Color)'}
         set(handles.nut_ts_axes,'FontUnits','points','LineWidth',1,'FontName','Times','FontWeight','bold','FontSize',15,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);  %changes time series axes numbers font
         set(handles.nut_megts_axes,'FontUnits','points','LineWidth',1,'FontName','Times','FontWeight','bold','FontSize',15,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);  %changes time series axes numbers font
         set(handles.nut_results_viewer,'Color',[1 1 1]);
-        set(cell2mat(get(handles.nut_ts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Times','FontWeight','bold','FontSize',15);  %changes time series axes label
-        set(cell2mat(get(handles.nut_megts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Times','FontWeight','bold','FontSize',15);  %changes time series axes label
+        set([ts_axes{:}],'FontUnits','points','FontName','Times','FontWeight','bold','FontSize',15);  %changes time series axes label
+        set([megts_axes{:}],'FontUnits','points','FontName','Times','FontWeight','bold','FontSize',15);  %changes time series axes label
         set(handles.nut_blobstyle,'Value',2);
     case 'Paper Style (Monochrome)'
         set(handles.nut_ts_axes,'FontUnits','points','LineWidth',1,'FontName','Times','FontWeight','bold','FontSize',15,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);  %changes time series axes numbers font
         set(handles.nut_megts_axes,'FontUnits','points','LineWidth',1,'FontName','Times','FontWeight','bold','FontSize',15,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);  %changes time series axes numbers font
         set(handles.nut_results_viewer,'Color',[1 1 1]);
-        set(cell2mat(get(handles.nut_ts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Times','FontWeight','bold','FontSize',15);  %changes time series axes label
-        set(cell2mat(get(handles.nut_megts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Times','FontWeight','bold','FontSize',15);  %changes time series axes label
+        set([ts_axes{:}],'FontUnits','points','FontName','Times','FontWeight','bold','FontSize',15);  %changes time series axes label
+        set([megts_axes{:}],'FontUnits','points','FontName','Times','FontWeight','bold','FontSize',15);  %changes time series axes label
         set(handles.nut_blobstyle,'Value',1);
     case 'SAM Style'   % jfh
         set(handles.nut_ts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);  %changes time series axes numbers font
         set(handles.nut_megts_axes,'FontUnits','points','LineWidth',2,'FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[1 1 1],'XColor',[0 0 0],'YColor',[0 0 0]);  %changes time series axes numbers font
         set(handles.nut_results_viewer,'Color',[.93 .93 .92]);  %color of background of whole figure
-        set(cell2mat(get(handles.nut_ts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[0 0 0]);  %changes time series axes label
-        set(cell2mat(get(handles.nut_megts_axes,{'Xlabel','Ylabel'})),'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[0 0 0]);  %changes time series axes label
+        set([ts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[0 0 0]);  %changes time series axes label
+        set([megts_axes{:}],'FontUnits','points','FontName','Helvetica','FontWeight','bold','FontSize',12,'Color',[0 0 0]);  %changes time series axes label
 
         mytargintens = 0.7;
         myncolsteps = 64;

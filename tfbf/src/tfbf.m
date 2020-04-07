@@ -1,7 +1,7 @@
 function tfbf(sessionfile,timewinfile,lowfreq,hifreq,varargin)
 % TFBF   runs the time-frequency beamformer
 %
-%   tfbf(sessionfile,timewinfile,lowfreq,highfreq,|filterconfig|,|invsolconfig|)
+%   tfbf(sessionfile,timewinfile,lowfreq,highfreq,|filterconfig|,|invsolconfig|,|reuse|)
 %
 % Input arguments in || are optional
 %
@@ -39,6 +39,8 @@ function tfbf(sessionfile,timewinfile,lowfreq,hifreq,varargin)
 %                     like to calculate virtual channels.
 %                   - savefiltereddata: 0 (default) or 1. Set to 1 if you
 %                     would like to calculate virtual channels.
+% reuse             Set to 'reuse' to keep exiting filtdata* files.
+%                   Otherwise existing files will be overwritten.
 
 if(ischar(lowfreq))
     lowfreq = str2num(lowfreq);
@@ -67,6 +69,7 @@ if ~exist('params','var')       % if filt and params were not saved in same sing
     %     [algo{1:size(algo,1)}]=varargin{2:end};
     end
 end
+reuse = strcmp(varargin{end},'reuse');
 
 nut_defaults;
 
@@ -91,8 +94,8 @@ if ~isfield(params,'algo'), params.algo={'SAM'}; end
 if ischar(params.algo), params.algo={params.algo}; end
 params.dualstate = ~isempty(control);
 params.eegflag = ( isfield(nuts.meg,'eegflag') && nuts.meg.eegflag );
-if ~isfield(params,'cn'), params.cn = ~params.eegflag; end  % weight normalization is default for EEG data, leadfield normalization for MEG data
-if ~isfield(params,'wn'), params.wn = (~params.cn && params.eegflag); end
+if ~isfield(params,'cn'), params.cn = true; end % ~params.eegflag; end  
+if ~isfield(params,'wn'), params.wn = false; end %(~params.cn && params.eegflag); end
 if ~isfield(params,'qsub'), params.qsub=false; end
 if ~isfield(params,'savepower'), params.savepower=true; end
 if ~isfield(params,'saveweights'), params.saveweights=false; end
@@ -128,12 +131,7 @@ numchannels=size(nuts.meg.data,2)
 
 % Deal with EEG specific problems
 if params.eegflag
-    params.eegflag=true;
-    if isfield(nuts.meg,'referenceidx')
-        params.referenceidx=nuts.meg.referenceidx;
-    else  % if reference not defined we assume average reference
-        params.referenceidx=goodchannels;
-    end
+    params.referenceidx=nuts.meg.referenceidx;
 	if isscalar(params.referenceidx)  % If single electrode reference
         nuts.meg.data(:,goodchannels==params.referenceidx,:)=[];  % Remove reference channel (which is all 0)
     else        % If average reference
@@ -151,7 +149,7 @@ params
 
 % Filter and preprocessing
 outname = ['filtdata_' filename '_' filtname '_' num2str(lowfreq) 'to' num2str(hifreq) 'Hz.mat'];
-if ~exist(outname,'file')
+if ~reuse || ~exist(outname,'file')
     if isfield(filt,'reference')        % EEG data can be rereferenced to AVG or given electrode here.
         nuts.meg = nut_eegref(nuts.meg,filt.reference);
     end
@@ -207,7 +205,11 @@ params.session = sessionfile;
 for kk=1:size(R,3) % Johanna uses this mineig for inverse regularization
     % FIXME: in future, use 2nd output of nut_cov rather than recompute mineig here
     if ~isempty(Rcon)
-        params.mineig(kk)=min(eig([R(:,:,kk)+Rcon]/2));
+        if size(R,3)>size(Rcon,3)
+            params.mineig(kk)=min(eig([R(:,:,kk)+Rcon]/2));
+        else
+            params.mineig(kk)=min(eig([R(:,:,kk)+Rcon(:,:,kk)]/2));
+        end
     else
         params.mineig(kk)=min(eig([R(:,:,kk)]/2));
     end
@@ -216,8 +218,10 @@ end
 outname = ['cov_' filename '_' filtname '_' paramname '_' num2str(lowfreq) 'to' num2str(hifreq) 'Hz'];
 save([outname '.mat'],'R','Rcon','params','goodchannels');   % ,'filtERF'
 
+
 if isoldsavestyle
 % be sure you called nut_liposession(filename) already prior to this step
+    nut_liposession(filename);
     sessionfile = [filename 'Lp.mat'];  % load stripped session file
 end
 

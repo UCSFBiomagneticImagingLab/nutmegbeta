@@ -35,6 +35,7 @@ end
 
 % Rereference
 if ~iscell(REF) && strcmpi(REF,'avg')
+    meg.data=nut_filter2(meg.data,[],'baseline_only',[],[],[],[],1);  % need to remove offset in case of average ref
     reference = mean(meg.data, 2);
     meg.reference = 'AVG';
     meg.referenceidx = meg.goodchannels;
@@ -43,7 +44,7 @@ if ~iscell(REF) && strcmpi(REF,'avg')
         meg.data(:,newbadchan,:)=[];
         meg.goodchannels(newbadchan)=[];
     end
-elseif ~iscell(REF) && strcmpi(REF,'cz') && strcmpi(meg.system,'Biosemi')       % Biosemi has Cz as the first channel (A1)
+elseif ~iscell(REF) && strcmpi(REF,'cz') && strcmpi(meg.system,'biosemi')       % Biosemi has Cz as the first channel (A1)
     meg.referenceidx =  find(ismember(1:3,meg.goodchannels),1);
     if isempty(meg.referenceidx), error('All electrodes close to Cz were designated as bad channels.'), end
     reference = meg.data(:,1,:);
