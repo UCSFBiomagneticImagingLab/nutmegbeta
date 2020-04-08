@@ -191,12 +191,29 @@ else
         case 2
             roi = fcm_anatroi('gui'); 
         case 3
-            [fi,pa]=uigefile('*.mat','Load ROI voxel coordinates...');
+            [fi,pa]=uigetfile('*.mat','Load ROI voxel coordinates...');
             if isequal(fi,0), return, end
             roi=load(fullfile(pa,fi));
             if ~any(isfield(roi,{'voxels' 'MEGvoxels' 'MNIvoxels' 'MRIvoxels'}))
                 errordlg('File must contain one of the variables "MRIvoxels", "MNIvoxels" or "MEGvoxels".')
                 return
+            end
+            % force display of custom ROIs to check location
+            global st nuts
+            spm_orthviews('rmblobs',1)
+            if get(hObject,'Value')
+                if isempty(findobj('tag','nutmegfig'))
+                    if isempty(nuts)
+                        error('You must load session file first.')
+                    end
+                    nutmeg(nuts);
+                end
+                vmm = nut_mni2mri(double(roi.MNIvoxels));
+                XYZ= nut_mm2voxels(vmm);
+                Z=ones(size(XYZ,1),1);
+                figure(st.fig)
+                spm_orthviews('addcolouredblobs',1,XYZ.',Z,st.vols{1}.mat,[1 0 0])
+                spm_orthviews('reposition',mean(vmm))
             end
         case 4
             return
